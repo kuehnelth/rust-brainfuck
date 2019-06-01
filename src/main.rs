@@ -53,7 +53,7 @@ fn parse(program: &mut std::str::Chars) -> Vec<Command> {
     result
 }
 
-fn execute(state: &mut State, commands: &Vec<Command>) {
+fn execute(state: &mut State, commands: &[Command]) {
     //println!(">> {:?}", commands);
     for cmd in commands {
         match cmd {
