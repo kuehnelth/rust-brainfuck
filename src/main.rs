@@ -1,7 +1,7 @@
 #![feature(test)]
 
 extern crate test;
-use std::collections::HashMap;
+use std::collections::VecDeque;
 
 #[derive(Debug)]
 enum Command {
@@ -16,14 +16,16 @@ enum Command {
 
 #[derive(Debug)]
 struct State {
-    memory: HashMap<i64, u8>,
-    pointer: i64,
+    memory: VecDeque<u8>,
+    pointer: usize,
 }
 
 impl State {
     fn new() -> State {
-        State { memory: HashMap::new(),
-                pointer: 0}
+        let mut s = State { memory: VecDeque::new(),
+                            pointer: 0};
+        s.memory.push_back(0);
+        s
     }
 }
 
@@ -50,15 +52,26 @@ fn execute(state: &mut State, commands: &Vec<Command>) -> String {
     //println!(">> {:?}", commands);
     for cmd in commands {
         match cmd {
-            Command::IncPointer => { state.pointer = state.pointer.wrapping_add(1); }
-            Command::DecPointer => { state.pointer = state.pointer.wrapping_sub(1); }
-            Command::IncValue   => { state.memory.insert(state.pointer, state.memory.get(&state.pointer).unwrap_or(&0).wrapping_add(1)); }
-            Command::DecValue   => { state.memory.insert(state.pointer, state.memory.get(&state.pointer).unwrap_or(&0).wrapping_sub(1)); }
+            Command::IncPointer => {
+                if state.pointer == state.memory.len() - 1 {
+                    state.memory.push_back(0);
+                }
+                state.pointer = state.pointer.wrapping_add(1);
+            }
+            Command::DecPointer => {
+                if state.pointer == 0 {
+                    state.memory.push_front(0);
+                } else {
+                    state.pointer = state.pointer.wrapping_sub(1);
+                }
+            }
+            Command::IncValue   => { state.memory[state.pointer] = state.memory[state.pointer].wrapping_add(1); }
+            Command::DecValue   => { state.memory[state.pointer] = state.memory[state.pointer].wrapping_sub(1); }
             //Command::PutChar    => { print!("{}", *state.memory.get(&state.pointer).unwrap_or(&0) as char); }
-            Command::PutChar    => { output.push(*state.memory.get(&state.pointer).unwrap_or(&0) as char); }
+            Command::PutChar    => { output.push(state.memory[state.pointer] as char); }
             Command::GetChar    => { unimplemented!(); }
             Command::Loop(subprogram) => {
-                while *state.memory.get(&state.pointer).unwrap_or(&0) != 0 {
+                while state.memory[state.pointer] != 0 {
                     //println!("LOOP {}", *state.memory.get(&state.pointer).unwrap_or(&0));
                     output.push_str(execute(state, &subprogram).as_str());
                 }
