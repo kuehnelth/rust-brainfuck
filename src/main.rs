@@ -22,8 +22,10 @@ struct State {
 
 impl State {
     fn new() -> State {
-        let mut s = State { memory: VecDeque::new(),
-                            pointer: 0};
+        let mut s = State {
+            memory: VecDeque::new(),
+            pointer: 0,
+        };
         s.memory.push_back(0);
         s
     }
@@ -31,7 +33,7 @@ impl State {
 
 fn parse(program: &mut std::str::Chars) -> Vec<Command> {
     let mut result: Vec<Command> = Vec::new();
-    while let Some(cmd) = program.next()  {
+    while let Some(cmd) = program.next() {
         if let Some(pcmd) = match cmd {
             '>' => Some(Command::IncPointer),
             '<' => Some(Command::DecPointer),
@@ -40,9 +42,11 @@ fn parse(program: &mut std::str::Chars) -> Vec<Command> {
             '.' => Some(Command::PutChar),
             ',' => Some(Command::GetChar),
             '[' => Some(Command::Loop(parse(program))),
-            ']' => {return result },
-            _   => None,
-        }  { result.push(pcmd); };
+            ']' => return result,
+            _ => None,
+        } {
+            result.push(pcmd);
+        };
     }
     result
 }
@@ -65,11 +69,19 @@ fn execute(state: &mut State, commands: &Vec<Command>) -> String {
                     state.pointer = state.pointer.wrapping_sub(1);
                 }
             }
-            Command::IncValue   => { state.memory[state.pointer] = state.memory[state.pointer].wrapping_add(1); }
-            Command::DecValue   => { state.memory[state.pointer] = state.memory[state.pointer].wrapping_sub(1); }
+            Command::IncValue => {
+                state.memory[state.pointer] = state.memory[state.pointer].wrapping_add(1);
+            }
+            Command::DecValue => {
+                state.memory[state.pointer] = state.memory[state.pointer].wrapping_sub(1);
+            }
             //Command::PutChar    => { print!("{}", *state.memory.get(&state.pointer).unwrap_or(&0) as char); }
-            Command::PutChar    => { output.push(state.memory[state.pointer] as char); }
-            Command::GetChar    => { unimplemented!(); }
+            Command::PutChar => {
+                output.push(state.memory[state.pointer] as char);
+            }
+            Command::GetChar => {
+                unimplemented!();
+            }
             Command::Loop(subprogram) => {
                 while state.memory[state.pointer] != 0 {
                     //println!("LOOP {}", *state.memory.get(&state.pointer).unwrap_or(&0));
@@ -84,7 +96,8 @@ fn execute(state: &mut State, commands: &Vec<Command>) -> String {
 
 fn main() {
     //let commands = parse(&mut "+[-[<<[+[--->]-[<<<]]]>>>-]>-.---.>..>.<<<<-.<+.>>>>>.>.<<.<-.".chars());
-    let commands = parse(&mut "99 Bottles of Beer in Urban Mueller's BrainF*** (The actual
+    let commands = parse(
+        &mut "99 Bottles of Beer in Urban Mueller's BrainF*** (The actual
 name is impolite)
 
 by Ben Olmstead
@@ -144,7 +157,9 @@ the readability of an IOCCC entry!
 >++++++++[<+++++++++++>-]<-.>++[<----------->-]<.+++++++++++
 ..>+++++++++[<---------->-]<-----.---.+++.---.[-]<<<]
 
-".chars());
+"
+        .chars(),
+    );
     //let commands = parse(&mut "++++++++[>++++++++<-]>+.".chars());
     let mut state = State::new();
     let result = execute(&mut state, &commands);
@@ -166,7 +181,8 @@ mod tests {
 
     #[test]
     fn test_hello_world() {
-        let commands = parse(&mut "+[-[<<[+[--->]-[<<<]]]>>>-]>-.---.>..>.<<<<-.<+.>>>>>.>.<<.<-.".chars());
+        let commands =
+            parse(&mut "+[-[<<[+[--->]-[<<<]]]>>>-]>-.---.>..>.<<<<-.<+.>>>>>.>.<<.<-.".chars());
         let mut state = State::new();
         let result = execute(&mut state, &commands);
         assert_eq!("hello world", result);
@@ -174,7 +190,8 @@ mod tests {
 
     #[bench]
     fn bench_hello_world(b: &mut Bencher) {
-        let commands = parse(&mut "+[-[<<[+[--->]-[<<<]]]>>>-]>-.---.>..>.<<<<-.<+.>>>>>.>.<<.<-.".chars());
+        let commands =
+            parse(&mut "+[-[<<[+[--->]-[<<<]]]>>>-]>-.---.>..>.<<<<-.<+.>>>>>.>.<<.<-.".chars());
         let mut state = State::new();
         //let result = execute(&mut state, &commands);
         b.iter(|| execute(&mut state, &commands));
@@ -182,7 +199,8 @@ mod tests {
 
     #[bench]
     fn bench_bottles(b: &mut Bencher) {
-        let commands = parse(&mut "99 Bottles of Beer in Urban Mueller's BrainF*** (The actual
+        let commands = parse(
+            &mut "99 Bottles of Beer in Urban Mueller's BrainF*** (The actual
 name is impolite)
 
 by Ben Olmstead
@@ -241,7 +259,9 @@ the readability of an IOCCC entry!
 ++++++++>-]<++++.------------.---.>+++++++[<---------->-]<+.
 >++++++++[<+++++++++++>-]<-.>++[<----------->-]<.+++++++++++
 ..>+++++++++[<---------->-]<-----.---.+++.---.[-]<<<]
-".chars());
+"
+            .chars(),
+        );
         let mut state = State::new();
         //let result = execute(&mut state, &commands);
         b.iter(|| execute(&mut state, &commands));
