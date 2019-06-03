@@ -31,6 +31,54 @@ impl State {
         s.memory.push_back(0);
         s
     }
+
+    fn inc_pointer(&mut self) {
+        if self.pointer == self.memory.len() - 1 {
+            self.memory.push_back(0);
+        }
+        self.pointer = self.pointer.wrapping_add(1);
+    }
+
+    fn dec_pointer(&mut self) {
+        if self.pointer == 0 {
+            self.memory.push_front(0);
+        } else {
+            self.pointer = self.pointer.wrapping_sub(1);
+        }
+    }
+
+    fn add_val(&mut self, val: u8) {
+        self.memory[self.pointer] = self.memory[self.pointer].wrapping_add(val);
+    }
+
+    fn sub_val(&mut self, val: u8) {
+        self.memory[self.pointer] = self.memory[self.pointer].wrapping_sub(val);
+    }
+
+    fn put_char(&self, writer: &mut dyn std::io::Write) {
+        write!(writer, "{}", self.memory[self.pointer] as char).unwrap();
+    }
+
+    fn run_loop(&mut self, subprogram: &Vec<Command>, writer: &mut dyn std::io::Write) {
+        while self.memory[self.pointer] != 0 {
+            self.execute(&subprogram, writer);
+        }
+    }
+
+    fn execute(&mut self, commands: &[Command], writer: &mut dyn std::io::Write) {
+        for cmd in commands {
+            match cmd {
+                Command::IncPointer => self.inc_pointer(),
+                Command::DecPointer => self.dec_pointer(),
+                Command::IncValue => self.add_val(1),
+                Command::DecValue => self.sub_val(1),
+                Command::PutChar => self.put_char(writer),
+                Command::GetChar => unimplemented!(),
+                Command::Loop(subprogram) => self.run_loop(&subprogram, writer),
+            };
+        };
+    }
+
 }
 
 fn parse(program: &mut std::str::Chars) -> Vec<Command> {
@@ -53,54 +101,18 @@ fn parse(program: &mut std::str::Chars) -> Vec<Command> {
     result
 }
 
-fn execute(state: &mut State, commands: &[Command]) {
-    //println!(">> {:?}", commands);
-    for cmd in commands {
-        match cmd {
-            Command::IncPointer => {
-                if state.pointer == state.memory.len() - 1 {
-                    state.memory.push_back(0);
-                }
-                state.pointer = state.pointer.wrapping_add(1);
-            }
-            Command::DecPointer => {
-                if state.pointer == 0 {
-                    state.memory.push_front(0);
-                } else {
-                    state.pointer = state.pointer.wrapping_sub(1);
-                }
-            }
-            Command::IncValue => {
-                state.memory[state.pointer] = state.memory[state.pointer].wrapping_add(1);
-            }
-            Command::DecValue => {
-                state.memory[state.pointer] = state.memory[state.pointer].wrapping_sub(1);
-            }
-            Command::PutChar => {
-                print!("{}", state.memory[state.pointer] as char);
-            }
-            Command::GetChar => {
-                unimplemented!();
-            }
-            Command::Loop(subprogram) => {
-                while state.memory[state.pointer] != 0 {
-                    //println!("LOOP {}", *state.memory.get(&state.pointer).unwrap_or(&0));
-                    execute(state, &subprogram);
-                }
-            }
-        };
-        //println!("{:?}", state);
-    };
-}
 
 fn main() {
-    //let commands = parse(&mut "+[-[<<[+[--->]-[<<<]]]>>>-]>-.---.>..>.<<<<-.<+.>>>>>.>.<<.<-.".chars());
     let args: Vec<_> = env::args().collect();
+
+    if args.len() != 2 {
+        panic!("Please provide a filename to execute");
+    }
     let contents = fs::read_to_string(&args[1])
         .expect("Something went wrong reading the file");
     let commands = parse(&mut contents.chars());
     let mut state = State::new();
-    execute(&mut state, &commands);
+    state.execute(&commands, &mut std::io::stdout());
 }
 
 #[cfg(test)]
@@ -108,14 +120,13 @@ mod tests {
     use super::*;
     use test::Bencher;
 
-    /*
     #[test]
     fn test_a() {
         let mut output = Vec::new();
         let commands = parse(&mut "++++++++[>++++++++<-]>+.".chars());
         let mut state = State::new();
-        execute(&mut output, &mut state, &commands);
-        assert_eq!("A", output);
+        state.execute(&commands, &mut output);
+        assert_eq!("A", std::str::from_utf8(&output).unwrap());
     }
 
     #[test]
@@ -124,22 +135,24 @@ mod tests {
         let commands =
             parse(&mut "+[-[<<[+[--->]-[<<<]]]>>>-]>-.---.>..>.<<<<-.<+.>>>>>.>.<<.<-.".chars());
         let mut state = State::new();
-        let result = execute(&mut output, &mut state, &commands);
-        //assert_eq!("hello world", result);
+        state.execute(&commands, &mut output);
+        assert_eq!("hello world", std::str::from_utf8(&output).unwrap());
     }
-    */
+
 
     #[bench]
     fn bench_hello_world(b: &mut Bencher) {
+        let mut output = Vec::new();
         let commands =
             parse(&mut "+[-[<<[+[--->]-[<<<]]]>>>-]>-.---.>..>.<<<<-.<+.>>>>>.>.<<.<-.".chars());
         let mut state = State::new();
         //let result = execute(&mut state, &commands);
-        b.iter(|| execute(&mut state, &commands));
+        b.iter(|| state.execute(&commands, &mut output));
     }
 
     #[bench]
     fn bench_bottles(b: &mut Bencher) {
+        let mut output = Vec::new();
         let commands = parse(
             &mut "99 Bottles of Beer in Urban Mueller's BrainF*** (The actual
 name is impolite)
@@ -205,6 +218,6 @@ the readability of an IOCCC entry!
         );
         let mut state = State::new();
         //let result = execute(&mut state, &commands);
-        b.iter(|| execute(&mut state, &commands));
+        b.iter(|| state.execute(&commands, &mut output));
     }
 }
