@@ -56,7 +56,7 @@ impl State {
         write!(writer, "{}", self.memory[self.pointer] as char).unwrap();
     }
 
-    fn run_loop(&mut self, subprogram: &Vec<Command>, writer: &mut dyn std::io::Write) {
+    fn run_loop(&mut self, subprogram: &[Command], writer: &mut dyn std::io::Write) {
         while self.memory[self.pointer] != 0 {
             self.execute(&subprogram, writer);
         }
