@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub enum Command {
@@ -8,13 +9,55 @@ pub enum Command {
     DecValue,
     PutChar,
     GetChar,
-    Loop(Vec<Command>),
+    Loop(Program),
 }
 
 #[derive(Debug)]
 pub struct State {
     memory: VecDeque<u8>,
     pointer: usize,
+}
+
+#[derive(Debug)]
+pub struct Program {
+    commands: Vec<Command>,
+}
+
+impl Program {
+    pub fn new() -> Program {
+        Program {
+            commands: Vec::new(),
+        }
+    }
+
+    fn parse(program: &mut std::str::Chars) -> Program {
+        let mut result: Program = Program::new();
+        while let Some(cmd) = program.next() {
+            if let Some(pcmd) = match cmd {
+                '>' => Some(Command::IncPointer),
+                '<' => Some(Command::DecPointer),
+                '+' => Some(Command::IncValue),
+                '-' => Some(Command::DecValue),
+                '.' => Some(Command::PutChar),
+                ',' => Some(Command::GetChar),
+                '[' => Some(Command::Loop(Program::parse(program))),
+                ']' => return result,
+                _ => None,
+            } {
+                result.commands.push(pcmd);
+            };
+        }
+        result
+    }
+}
+
+impl FromStr for Program {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Program, ()> {
+        let mut chars = s.chars();
+        Ok(Program::parse(&mut chars))
+    }
 }
 
 impl State {
@@ -54,14 +97,14 @@ impl State {
         write!(writer, "{}", self.memory[self.pointer] as char).unwrap();
     }
 
-    fn run_loop(&mut self, subprogram: &[Command], writer: &mut dyn std::io::Write) {
+    fn run_loop(&mut self, subprogram: &Program, writer: &mut dyn std::io::Write) {
         while self.memory[self.pointer] != 0 {
             self.execute(&subprogram, writer);
         }
     }
 
-    pub fn execute(&mut self, commands: &[Command], writer: &mut dyn std::io::Write) {
-        for cmd in commands {
+    pub fn execute(&mut self, program: &Program, writer: &mut dyn std::io::Write) {
+        for cmd in &program.commands {
             match cmd {
                 Command::IncPointer => self.inc_pointer(),
                 Command::DecPointer => self.dec_pointer(),
@@ -76,22 +119,3 @@ impl State {
 
 }
 
-pub fn parse(program: &mut std::str::Chars) -> Vec<Command> {
-    let mut result: Vec<Command> = Vec::new();
-    while let Some(cmd) = program.next() {
-        if let Some(pcmd) = match cmd {
-            '>' => Some(Command::IncPointer),
-            '<' => Some(Command::DecPointer),
-            '+' => Some(Command::IncValue),
-            '-' => Some(Command::DecValue),
-            '.' => Some(Command::PutChar),
-            ',' => Some(Command::GetChar),
-            '[' => Some(Command::Loop(parse(program))),
-            ']' => return result,
-            _ => None,
-        } {
-            result.push(pcmd);
-        };
-    }
-    result
-}

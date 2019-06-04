@@ -11,9 +11,9 @@ fn main() {
     }
     let contents = fs::read_to_string(&args[1])
         .expect("Something went wrong reading the file");
-    let commands = parse(&mut contents.chars());
+    let program = contents.parse().unwrap();
     let mut state = State::new();
-    state.execute(&commands, &mut std::io::stdout());
+    state.execute(&program, &mut std::io::stdout());
 }
 
 #[cfg(test)]
@@ -23,19 +23,18 @@ mod tests {
     #[test]
     fn test_a() {
         let mut output = Vec::new();
-        let commands = parse(&mut "++++++++[>++++++++<-]>+.".chars());
+        let program = "++++++++[>++++++++<-]>+.".parse().unwrap();
         let mut state = State::new();
-        state.execute(&commands, &mut output);
+        state.execute(&program, &mut output);
         assert_eq!("A", std::str::from_utf8(&output).unwrap());
     }
 
     #[test]
     fn test_hello_world() {
         let mut output = Vec::new();
-        let commands =
-            parse(&mut "+[-[<<[+[--->]-[<<<]]]>>>-]>-.---.>..>.<<<<-.<+.>>>>>.>.<<.<-.".chars());
+        let program = "+[-[<<[+[--->]-[<<<]]]>>>-]>-.---.>..>.<<<<-.<+.>>>>>.>.<<.<-.".parse().unwrap();
         let mut state = State::new();
-        state.execute(&commands, &mut output);
+        state.execute(&program, &mut output);
         assert_eq!("hello world", std::str::from_utf8(&output).unwrap());
     }
 }
