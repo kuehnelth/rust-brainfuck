@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::str::FromStr;
+use std::io::Read;
 
 #[derive(Debug)]
 pub enum Command {
@@ -93,26 +94,30 @@ impl State {
         self.memory[self.pointer] = self.memory[self.pointer].wrapping_sub(val);
     }
 
+    fn get_char(&mut self, reader: &mut dyn std::io::Read) {
+        self.memory[self.pointer] = reader.bytes().next().unwrap().unwrap();
+    }
+
     fn put_char(&self, writer: &mut dyn std::io::Write) {
         write!(writer, "{}", self.memory[self.pointer] as char).unwrap();
     }
 
-    fn run_loop(&mut self, subprogram: &Program, writer: &mut dyn std::io::Write) {
+    fn run_loop(&mut self, subprogram: &Program, reader: &mut dyn std::io::Read, writer: &mut dyn std::io::Write) {
         while self.memory[self.pointer] != 0 {
-            self.execute(&subprogram, writer);
+            self.execute(&subprogram, reader, writer);
         }
     }
 
-    pub fn execute(&mut self, program: &Program, writer: &mut dyn std::io::Write) {
+    pub fn execute(&mut self, program: &Program, reader: &mut dyn std::io::Read, writer: &mut dyn std::io::Write) {
         for cmd in &program.commands {
             match cmd {
                 Command::IncPointer => self.inc_pointer(),
                 Command::DecPointer => self.dec_pointer(),
                 Command::IncValue => self.add_val(1),
                 Command::DecValue => self.sub_val(1),
+                Command::GetChar => self.get_char(reader),
                 Command::PutChar => self.put_char(writer),
-                Command::GetChar => unimplemented!(),
-                Command::Loop(subprogram) => self.run_loop(&subprogram, writer),
+                Command::Loop(subprogram) => self.run_loop(&subprogram, reader, writer),
             };
         };
     }
