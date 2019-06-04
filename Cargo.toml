@@ -5,3 +5,10 @@ authors = ["Thomas Kühnel <kuehnelth@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "my_benchmark"
+harness = false
