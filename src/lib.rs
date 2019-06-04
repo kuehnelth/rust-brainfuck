@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::io::Read;
 use std::str::FromStr;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Command {
     IncPointer,
     DecPointer,
@@ -13,7 +13,7 @@ pub enum Command {
     Loop(Program),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ParseError {
     MissingClosingBracket(u32),
 }
@@ -24,7 +24,7 @@ pub struct State {
     pointer: usize,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct Program {
     commands: Vec<Command>,
 }
@@ -187,5 +187,11 @@ mod tests {
         let mut state = State::new();
         state.execute(&program, &mut std::io::empty(), &mut output);
         assert_eq!("hello world", std::str::from_utf8(&output).unwrap());
+    }
+
+    #[test]
+    fn test_missing_bracket() {
+        let program : Result<Program, ParseError> = "[".parse();
+        assert_eq!(Err(ParseError::MissingClosingBracket(1)), program);
     }
 }
