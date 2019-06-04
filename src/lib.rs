@@ -13,6 +13,11 @@ pub enum Command {
     Loop(Program),
 }
 
+#[derive(Debug)]
+pub enum ParseError {
+    MissingClosingBracket(u32),
+}
+
 #[derive(Debug, Default)]
 pub struct State {
     memory: VecDeque<u8>,
@@ -31,7 +36,11 @@ impl Program {
         }
     }
 
-    fn parse(program: &mut std::str::Chars) -> Program {
+    fn parse(program: &mut std::str::Chars) -> Result<Program, ParseError> {
+        Program::parse_depth(program, 0)
+    }
+
+    fn parse_depth(program: &mut std::str::Chars, depth: u32) -> Result<Program, ParseError> {
         let mut result: Program = Program::new();
         while let Some(cmd) = program.next() {
             if let Some(pcmd) = match cmd {
@@ -41,23 +50,27 @@ impl Program {
                 '-' => Some(Command::DecValue),
                 '.' => Some(Command::PutChar),
                 ',' => Some(Command::GetChar),
-                '[' => Some(Command::Loop(Program::parse(program))),
-                ']' => return result,
+                '[' => Some(Command::Loop(Program::parse_depth(program, depth + 1)?)),
+                ']' => return Ok(result),
                 _ => None,
             } {
                 result.commands.push(pcmd);
             };
         }
-        result
+        if depth == 0 {
+            Ok(result)
+        } else {
+            Err(ParseError::MissingClosingBracket(depth))
+        }
     }
 }
 
 impl FromStr for Program {
-    type Err = ();
+    type Err = ParseError;
 
-    fn from_str(s: &str) -> Result<Program, ()> {
+    fn from_str(s: &str) -> Result<Program, ParseError> {
         let mut chars = s.chars();
-        Ok(Program::parse(&mut chars))
+        Program::parse(&mut chars)
     }
 }
 
@@ -145,6 +158,15 @@ mod tests {
         let mut state = State::new();
         state.execute(&program, &mut input, &mut output);
         assert_eq!("A", std::str::from_utf8(&output).unwrap());
+    }
+
+    #[test]
+    fn test_empty() {
+        let mut output = Vec::new();
+        let program = "".parse().unwrap();
+        let mut state = State::new();
+        state.execute(&program, &mut std::io::empty(), &mut output);
+        assert_eq!("", std::str::from_utf8(&output).unwrap());
     }
 
     #[test]
