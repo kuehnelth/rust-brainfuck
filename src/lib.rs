@@ -95,7 +95,7 @@ impl State {
     }
 
     fn get_char(&mut self, reader: &mut dyn std::io::Read) {
-        self.memory[self.pointer] = reader.bytes().next().unwrap().unwrap();
+        self.memory[self.pointer] = reader.bytes().next().unwrap_or(Ok(0)).unwrap();
     }
 
     fn put_char(&self, writer: &mut dyn std::io::Write) {
