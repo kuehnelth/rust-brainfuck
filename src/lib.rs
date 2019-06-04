@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
-use std::str::FromStr;
 use std::io::Read;
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub enum Command {
@@ -13,13 +13,13 @@ pub enum Command {
     Loop(Program),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct State {
     memory: VecDeque<u8>,
     pointer: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Program {
     commands: Vec<Command>,
 }
@@ -102,13 +102,23 @@ impl State {
         write!(writer, "{}", self.memory[self.pointer] as char).unwrap();
     }
 
-    fn run_loop(&mut self, subprogram: &Program, reader: &mut dyn std::io::Read, writer: &mut dyn std::io::Write) {
+    fn run_loop(
+        &mut self,
+        subprogram: &Program,
+        reader: &mut dyn std::io::Read,
+        writer: &mut dyn std::io::Write,
+    ) {
         while self.memory[self.pointer] != 0 {
             self.execute(&subprogram, reader, writer);
         }
     }
 
-    pub fn execute(&mut self, program: &Program, reader: &mut dyn std::io::Read, writer: &mut dyn std::io::Write) {
+    pub fn execute(
+        &mut self,
+        program: &Program,
+        reader: &mut dyn std::io::Read,
+        writer: &mut dyn std::io::Write,
+    ) {
         for cmd in &program.commands {
             match cmd {
                 Command::IncPointer => self.inc_pointer(),
@@ -119,8 +129,6 @@ impl State {
                 Command::PutChar => self.put_char(writer),
                 Command::Loop(subprogram) => self.run_loop(&subprogram, reader, writer),
             };
-        };
+        }
     }
-
 }
-
