@@ -4,10 +4,10 @@ use std::str::FromStr;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Command {
-    IncPointer,
-    DecPointer,
-    IncValue,
-    DecValue,
+    IncPointer(u8),
+    DecPointer(u8),
+    IncValue(u8),
+    DecValue(u8),
     PutChar,
     GetChar,
     Loop(Program),
@@ -36,22 +36,39 @@ impl Program {
         }
     }
 
-    fn parse(program: &mut std::str::Chars) -> Result<Program, ParseError> {
-        Program::parse_depth(program, 0)
+    fn parse(buf: &[u8]) -> Result<Program, ParseError> {
+        let mut res: Vec<(u8, char)> = Vec::new();
+        if buf.len() > 0 {
+            let mut byte = buf[0];
+            let mut reps = 1;
+
+            for curr_byte in &buf[1..] {
+                if byte == *curr_byte && "+-><".bytes().find(|c| *c == *curr_byte).is_some() {
+                    reps += 1;
+                } else  {
+                    res.push((reps, byte as char));
+                    reps = 1;
+                    byte = *curr_byte;
+                }
+            }
+            res.push((reps, byte as char));
+        }
+        let mut iter = res.into_iter();
+        Program::parse_depth(&mut iter, 0)
     }
 
-    fn parse_depth(program: &mut std::str::Chars, depth: u32) -> Result<Program, ParseError> {
+    fn parse_depth(program : &mut std::vec::IntoIter<(u8, char)>, depth: u32) -> Result<Program, ParseError> {
         let mut result: Program = Program::new();
         while let Some(cmd) = program.next() {
             if let Some(pcmd) = match cmd {
-                '>' => Some(Command::IncPointer),
-                '<' => Some(Command::DecPointer),
-                '+' => Some(Command::IncValue),
-                '-' => Some(Command::DecValue),
-                '.' => Some(Command::PutChar),
-                ',' => Some(Command::GetChar),
-                '[' => Some(Command::Loop(Program::parse_depth(program, depth + 1)?)),
-                ']' => return Ok(result),
+                (i, '>') => Some(Command::IncPointer(i)),
+                (i, '<') => Some(Command::DecPointer(i)),
+                (i, '+') => Some(Command::IncValue(i)),
+                (i, '-') => Some(Command::DecValue(i)),
+                (1, '.') => Some(Command::PutChar),
+                (1, ',') => Some(Command::GetChar),
+                (1, '[') => Some(Command::Loop(Program::parse_depth(program, depth + 1)?)),
+                (1, ']') => return Ok(result),
                 _ => None,
             } {
                 result.commands.push(pcmd);
@@ -69,8 +86,8 @@ impl FromStr for Program {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Program, ParseError> {
-        let mut chars = s.chars();
-        Program::parse(&mut chars)
+        let bytes = s.as_bytes();
+        Program::parse(bytes)
     }
 }
 
@@ -84,18 +101,20 @@ impl State {
         s
     }
 
-    fn inc_pointer(&mut self) {
-        if self.pointer == self.memory.len() - 1 {
+    fn inc_pointer(&mut self, val: usize) {
+        self.pointer = self.pointer.wrapping_add(val);
+        while self.pointer >= self.memory.len() - 1 {
             self.memory.push_back(0);
         }
-        self.pointer = self.pointer.wrapping_add(1);
     }
 
-    fn dec_pointer(&mut self) {
-        if self.pointer == 0 {
-            self.memory.push_front(0);
+    fn dec_pointer(&mut self, val: usize) {
+        if val > self.pointer {
+            for _ in 0..val - self.pointer {
+                self.memory.push_front(0);
+            }
         } else {
-            self.pointer = self.pointer.wrapping_sub(1);
+            self.pointer = self.pointer.wrapping_sub(val);
         }
     }
 
@@ -134,10 +153,10 @@ impl State {
     ) {
         for cmd in &program.commands {
             match cmd {
-                Command::IncPointer => self.inc_pointer(),
-                Command::DecPointer => self.dec_pointer(),
-                Command::IncValue => self.add_val(1),
-                Command::DecValue => self.sub_val(1),
+                Command::IncPointer(i) => self.inc_pointer(*i as usize),
+                Command::DecPointer(i) => self.dec_pointer(*i as usize),
+                Command::IncValue(i) => self.add_val(*i),
+                Command::DecValue(i) => self.sub_val(*i),
                 Command::GetChar => self.get_char(reader),
                 Command::PutChar => self.put_char(writer),
                 Command::Loop(subprogram) => self.run_loop(&subprogram, reader, writer),
